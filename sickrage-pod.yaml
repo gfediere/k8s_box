@@ -1,0 +1,28 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: sickrage-webserver
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sickrage-webserver
+    spec:
+      containers:
+      - image: linuxserver/sickrage
+        name: sickrage-webserver
+        ports:
+        - containerPort: 8081
+          hostPort: 8082
+          hostIP: 10.8.0.1
+        volumeMounts:
+          - name: sickrage-pv-config
+            mountPath: /config
+      volumes:
+      - name: sickrage-pv-config
+        hostPath:
+          path: /data/docker/configs/sickrage
+      restartPolicy: Always
