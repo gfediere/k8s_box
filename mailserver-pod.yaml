@@ -1,0 +1,78 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: mailserver-svc
+  labels:
+    app: mailserver-svc
+spec:
+  selector:
+    app: mailserver-pod
+  ports:
+    - name: smtp
+      port: 25
+      targetPort: smtp
+    - name: smtp-auth
+      port: 587
+      targetPort: smtp-auth
+    - name: imap-secure
+      port: 993
+      targetPort: imap-secure
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: mailserver-pod
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mailserver-pod
+    spec:
+      containers:
+      - image: tvial/docker-mailserver
+        name: mailserver-pod
+        ports:
+        - containerPort: 25
+          name: smtp
+        - containerPort: 143
+          name: smtps
+        - containerPort: 587
+          name: smtp-auth
+        - containerPort: 993
+          name: imap-secure
+        volumeMounts:
+          - name: mailserver-pv-data
+            mountPath: /var/mail
+          - name: mailserver-pv-mailstate
+            mountPath: /var/mail-state
+          - name: mailserver-pv-config
+            mountPath: /tmp/docker-mailserver
+        env:
+          - name: 'ENABLE_SPAMASSASSIN'
+            value: '0'
+          - name: 'ENABLE_CLAMAV'
+            value: '0'
+          - name: 'ENABLE_FAIL2BAN'
+            value: '0'
+          - name: 'ONE_DIR'
+            value: '1'
+          - name: 'DMS_DEBUG'
+            value: '0'
+          - name: 'ENABLE_SASLAUTHD'
+            value: '1'
+          - name: 'SASLAUTHD_MECHANISMS'
+            value: 'pam'
+      volumes:
+      - name: mailserver-pv-data
+        hostPath:
+          path: /data/k8s/datas/mailserver/mail
+      - name: mailserver-pv-mailstate
+        hostPath:
+          path: /data/k8s/datas/mailserver/mail-state
+      - name: mailserver-pv-config
+        hostPath:
+          path: /data/k8s/configs/mailserver
+      restartPolicy: Always
