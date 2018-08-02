@@ -1,0 +1,122 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: mailserver.config
+  labels:
+    app: mailserver
+data:
+  postfix-main.cf: |
+    myhostname = mail.fedallica.fr
+    mydomain = fedallica.fr
+
+  postfix-accounts.cf: |
+    gfediere@fedallica.fr|{SHA512-CRYPT}$6$DnJvTmCVoM3240zQ$pDb5iH1ANr2L2HbByYoiaqN21h6L9ihGoFZ5lw13fS3Aw3AVJLp62uVJMZDt.3eK4YUM9iJ63ZKDeWrpOKz441
+
+  postfix-virtual.cf: |
+    edf@fedallica.fr gfediere@gmail.com afediere@free.fr
+    amazon@fedallica.fr gfediere@gmail.com
+    americanexpress@fedallica.fr gfediere@gmail.com
+    amex@fedallica.fr gfediere@gmail.com
+    applecriteo@fedallica.fr gfediere@gmail.com
+    aquariophilie@fedallica.fr gfediere@gmail.com
+    aquariphilie@fedallica.fr gfediere@gmail.com
+    aquarium@fedallica.fr gfediere@gmail.com
+    aws@fedallica.fr gfediere@gmail.com
+    banques@fedallica.fr gfediere@gmail.com
+    canal@fedallica.fr gfediere@gmail.com
+    fidellite@fedallica.fr gfediere@gmail.com
+    location@fedallica.fr gfediere@gmail.com
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: mailserver-svc
+  labels:
+    app: mailserver-svc
+spec:
+  selector:
+    app: mailserver-pod
+  ports:
+    - name: smtp
+      port: 25
+      targetPort: smtp
+    - name: smtp-auth
+      port: 587
+      targetPort: smtp-auth
+    - name: imap-secure
+      port: 993
+      targetPort: imap-secure
+
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: mailserver-pod
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mailserver-pod
+    spec:
+      hostNetwork: true
+      containers:
+        - name: mailserver-pod
+          image: tvial/docker-mailserver:latest
+          ports:
+          - containerPort: 25
+            name: smtp
+            hostPort: 25
+          - containerPort: 143
+            name: imap
+          - containerPort: 587
+            name: smtp-auth
+            hostPort: 587
+          - containerPort: 993
+            name: imap-secure
+            hostPort: 993
+          volumeMounts:
+            - name: mailserver-pv-data
+              mountPath: /var/mail
+            - name: mailserver-pv-mailstate
+              mountPath: /var/mail-state
+            - name: config
+              subPath: postfix-accounts.cf
+              mountPath: /tmp/docker-mailserver/postfix-accounts.cf
+              readOnly: true
+            - name: config
+              subPath: postfix-main.cf
+              mountPath: /tmp/docker-mailserver/postfix-main.cf
+              readOnly: true
+            - name: config
+              subPath: postfix-virtual.cf
+              mountPath: /tmp/docker-mailserver/postfix-virtual.cf
+              readOnly: true
+          env:
+            - name: 'ENABLE_SPAMASSASSIN'
+              value: '0'
+            - name: 'ENABLE_CLAMAV'
+              value: '0'
+            - name: 'ENABLE_FAIL2BAN'
+              value: '0'
+            - name: 'ONE_DIR'
+              value: '1'
+            - name: 'DMS_DEBUG'
+              value: '0'
+            - name: 'ENABLE_SASLAUTHD'
+              value: '1'
+            - name: 'SASLAUTHD_MECHANISMS'
+              value: 'pam'
+      volumes:
+      - name: mailserver-pv-data
+        hostPath:
+          path: /data/k8s/datas/mailserver/mail
+      - name: mailserver-pv-mailstate
+        hostPath:
+          path: /data/k8s/datas/mailserver/mail-state
+      - name: config
+        configMap:
+          name: mailserver.config
+      restartPolicy: Always
