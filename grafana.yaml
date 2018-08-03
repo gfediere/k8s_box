@@ -1,0 +1,37 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: grafana-pod
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: grafana-pod
+    spec:
+      containers:
+      - image: grafana/grafana
+        name: grafana-pod
+        ports:
+        - containerPort: 3000
+          hostPort: 3000
+        volumeMounts:
+          - name: grafana-pv-config
+            mountPath: /etc/grafana
+          - name: grafana-pv-datas
+            mountPath: /var/lib/grafana
+        env:
+          - name: 'GF_SERVER_ROOT_URL'
+            value: 'http://grafana.bezons.local'
+          - name: 'GF_SECURITY_ADMIN_PASSWORD'
+            value: 'secret'
+      volumes:
+      - name: grafana-pv-config
+        hostPath:
+          path: /data/k8s/configs/grafana
+      - name: grafana-pv-datas
+        hostPath:
+          path: /data/k8s/datas/grafana
+      restartPolicy: Always

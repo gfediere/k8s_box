@@ -1,0 +1,28 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: snmp-exporter-pod
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: snmp-exporter-pod
+    spec:
+      hostNetwork: true
+      containers:
+      - image: amkay/snmp_exporter
+        name: snmp-exporter-pod
+        ports:
+        - containerPort: 9116
+          hostPort: 9116
+        volumeMounts:
+          - name: snmp-exporter-pv-config
+            mountPath: /etc/snmp-exporter
+      volumes:
+      - name: snmp-exporter-pv-config
+        hostPath:
+          path: /data/k8s/configs/snmp-exporter
+      restartPolicy: Always

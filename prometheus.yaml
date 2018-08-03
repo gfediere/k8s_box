@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-svc
+  labels:
+    app: prometheus-svc
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9090
+  selector:
+    app: prometheus-pod
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: prometheus-pod
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: prometheus-pod
+    spec:
+      hostNetwork: true
+      containers:
+      - image: prom/prometheus
+        name: prometheus-pod
+        args:
+          - '--config.file=/etc/prometheus/prometheus.yml'
+          - '--storage.tsdb.path=/prometheus'
+          - '--web.listen-address=:9090'
+        ports:
+        - containerPort: 9090
+          hostPort: 9090
+        volumeMounts:
+          - name: prometheus-pv-config
+            mountPath: /etc/prometheus
+          - name: prometheus-pv-datas
+            mountPath: /prometheus
+      volumes:
+      - name: prometheus-pv-config
+        hostPath:
+          path: /data/k8s/configs/prometheus
+      - name: prometheus-pv-datas
+        hostPath:
+          path: /data/k8s/datas/prometheus
+      restartPolicy: Always

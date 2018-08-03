@@ -1,0 +1,36 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: alertmanager-pod
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: alertmanager-pod
+    spec:
+      hostNetwork: true
+      containers:
+      - image: prom/alertmanager
+        name: prometheus-pod
+        args:
+          - '--config.file=/etc/alertmanager/alertmanager.yml'
+          - '--storage.path=/alertmanager'
+        ports:
+        - containerPort: 9093
+          hostPort: 9093
+        volumeMounts:
+          - name: alertmanager-pv-config
+            mountPath: /etc/alertmanager
+          - name: alertmanager-pv-datas
+            mountPath: /alertmanager
+      volumes:
+      - name: alertmanager-pv-config
+        hostPath:
+          path: /data/k8s/configs/alertmanager
+      - name: alertmanager-pv-datas
+        hostPath:
+          path: /data/k8s/datas/alertmanager
+      restartPolicy: Always
